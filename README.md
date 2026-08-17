@@ -19,7 +19,8 @@ A tiny arcade game in a single HTML file. Pick a hero, pick a planet, catch fall
 
 ## How to play
 - Select a hero, hit Start, then pick an unlocked planet.
-- Move with WASD or arrow keys (drag on touch screens).
+- **Drag**: hold the hero icon and drag it across the sky to catch stars (also works with touch).
+- WASD or arrow keys work as an alternative.
 - Gold stars are worth 50x your combo, hearts restore HP, chains build a combo multiplier.
 - P pauses, M toggles sound. Best score is saved in your browser.
 

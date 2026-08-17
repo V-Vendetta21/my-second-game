@@ -419,7 +419,7 @@ const BASE_TOP=44;
 let P={x:W/2,y:H-120,r:36,sp:300,img:heroImg[0]};
 let stars=[],projs=[],fireT=0;
 let score=0,baseHP=10,starsCaught=0,target=10,combo=0,comboT=0,best=0,spawnT=.7,runT=0,flashT=0,missT=0,scorePop=0,overAt=0,newBest=false;
-let keys={},touch=null;
+let keys={},drag=false,dragX=0,dragY=0;
 try{best=parseInt(localStorage.getItem('starcatcher_best'))||0;}catch(e){}
 function startLevel(d,p){
   ac();diffIdx=d;planetIdx=p;mode='play';paused=false;
@@ -430,7 +430,7 @@ function startLevel(d,p){
   P={x:W/2,y:H-BASE_TOP-pr-10,r:pr,sp:HEROES[sel].speed,img:heroImg[sel]};
   btns=[];
   float(W/2,H*.5,'CATCH '+target+' STARS!','#ffd54a',2.2,24);
-  float(W/2,H*.5+36,'WASD / ARROWS TO MOVE','#8fa3c8',2.8,15);
+  float(W/2,H*.5+36,'DRAG YOUR HERO - WASD ALSO WORKS','#8fa3c8',2.8,15);
   tone(440,.12,'sine',.15);tone(660,.16,'sine',.13,.1);
 }
 function completeLevel(){
@@ -503,18 +503,17 @@ function updatePlay(dt){
   spawnT-=dt;
   if(spawnT<=0){spawnStar();spawnT=Math.max(.3,DIFFS[diffIdx].spawn-runT*.004);}
   let mvx=0,mvy=0;
-  if(keys['ArrowLeft']||keys['a'])mvx-=1;
-  if(keys['ArrowRight']||keys['d'])mvx+=1;
-  if(keys['ArrowUp']||keys['w'])mvy-=1;
-  if(keys['ArrowDown']||keys['s'])mvy+=1;
-  if(touch){
-    const dx=touch.x-P.x,dy=touch.y-P.y,mm=Math.hypot(dx,dy);
-    if(mm>8){mvx=dx/mm*P.sp*1.3;mvy=dy/mm*P.sp*1.3;}else{mvx=0;mvy=0;}
-  }else if(mvx||mvy){
-    const mm=Math.hypot(mvx,mvy);mvx/=mm;mvy/=mm;
-    mvx*=P.sp;mvy*=P.sp;
+  if(drag){
+    const k=Math.min(1,dt*16);
+    P.x+=(dragX-P.x)*k;P.y+=(dragY-P.y)*k;
+  }else{
+    if(keys['ArrowLeft']||keys['a'])mvx-=1;
+    if(keys['ArrowRight']||keys['d'])mvx+=1;
+    if(keys['ArrowUp']||keys['w'])mvy-=1;
+    if(keys['ArrowDown']||keys['s'])mvy+=1;
+    if(mvx||mvy){const mm=Math.hypot(mvx,mvy);mvx/=mm;mvy/=mm;mvx*=P.sp;mvy*=P.sp;}
+    P.x+=mvx*dt;P.y+=mvy*dt;
   }
-  P.x+=mvx*dt;P.y+=mvy*dt;
   P.x=Math.max(P.r+8,Math.min(W-P.r-8,P.x));
   P.y=Math.max(H*.3,Math.min(H-BASE_TOP-P.r-8,P.y));
   /* rock cone volley */
@@ -613,6 +612,14 @@ function drawPlayer(){
   ctx.globalAlpha=.32;ctx.fillStyle='#000';
   ctx.beginPath();ctx.ellipse(P.x,P.y+P.r*.85,P.r*.85,P.r*.3,0,0,7);ctx.fill();
   ctx.globalAlpha=1;
+  if(drag){
+    ctx.lineWidth=3;
+    ctx.strokeStyle='rgba(255,215,110,'+(.55+.35*Math.sin(tNow*10))+')';
+    ctx.beginPath();ctx.arc(P.x,P.y,P.r*1.3,0,7);ctx.stroke();
+    const g=ctx.createRadialGradient(P.x,P.y,P.r*.5,P.x,P.y,P.r*2);
+    g.addColorStop(0,'rgba(255,215,110,.18)');g.addColorStop(1,'rgba(255,215,110,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(P.x,P.y,P.r*2,0,7);ctx.fill();
+  }
   ctx.drawImage(P.img,P.x-w/2,P.y-w/2,w,w);
   ctx.restore();
 }
@@ -641,7 +648,7 @@ function drawHUD(){
   ctx.fillStyle='#eaf2ff';ctx.font="800 22px 'Segoe UI',system-ui,sans-serif";
   ctx.fillText(String(best),W-40,48);
   ctx.textAlign='left';ctx.fillStyle='rgba(150,165,200,.55)';ctx.font="500 11px 'Segoe UI',system-ui,sans-serif";
-  ctx.fillText('P pause   M sound '+(muted?'off':'on'),14,H-12);
+  ctx.fillText('DRAG hero - WASD - P pause - M sound '+(muted?'off':'on'),14,H-12);
 }
 function drawPlay(){
   drawSky();
@@ -755,6 +762,7 @@ function clickAt(x,y){
 }
 cv.addEventListener('mousemove',e=>{
   mx=e.clientX;my=e.clientY;
+  if(drag){dragX=mx;dragY=my;}
   let ptr=false;
   if(mode==='menu'){
     for(let i=0;i<3;i++)if(dist(mx,my,m.cxs[i],m.cy)<m.R*1.6)ptr=true;
@@ -762,13 +770,18 @@ cv.addEventListener('mousemove',e=>{
   }else if(mode==='diff'){
     if(hitBtn(backBtn,mx,my))ptr=true;
     for(let c=0;c<3;c++)for(let i=0;i<3;i++){const o=orbRect(diffCards[c],i);if(i<=Math.min(3,progress[DIFFS[c].id])&&dist(mx,my,o.x,o.y)<o.r*1.5)ptr=true;}
-  }else if(mode==='over'||mode==='clear'){ptr=btns.some(b=>hitBtn(b,mx,my));}
-  cv.style.cursor=ptr?'pointer':'default';
+  }else if(mode==='play'&&!paused&&!drag&&dist(mx,my,P.x,P.y)<P.r*1.6){ptr=true;}
+  else if(mode==='over'||mode==='clear'){ptr=btns.some(b=>hitBtn(b,mx,my));}
+  cv.style.cursor=drag?'grabbing':(ptr?(mode==='play'?'grab':'pointer'):'default');
 });
-cv.addEventListener('mousedown',e=>clickAt(e.clientX,e.clientY));
-cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];mx=t.clientX;my=t.clientY;clickAt(t.clientX,t.clientY);touch={x:t.clientX,y:t.clientY};},{passive:false});
-cv.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];touch={x:t.clientX,y:t.clientY};},{passive:false});
-cv.addEventListener('touchend',e=>{e.preventDefault();touch=null;},{passive:false});
+cv.addEventListener('mousedown',e=>{
+  if(mode==='play'&&!paused&&dist(e.clientX,e.clientY,P.x,P.y)<P.r*1.6){drag=true;dragX=e.clientX;dragY=e.clientY;}
+  else clickAt(e.clientX,e.clientY);
+});
+addEventListener('mouseup',()=>{drag=false;});
+cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];mx=t.clientX;my=t.clientY;if(mode==='play'&&!paused){drag=true;dragX=t.clientX;dragY=t.clientY;}else clickAt(t.clientX,t.clientY);},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];mx=t.clientX;my=t.clientY;if(drag){dragX=t.clientX;dragY=t.clientY;}},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();drag=false;},{passive:false});
 addEventListener('keydown',e=>{
   ac();
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
@@ -794,7 +807,7 @@ addEventListener('resize',resize);
 /* ================= boot ================= */
 resize();initSky();layout();
 window.SC={
-  getState:()=>({mode,sel,diff:diffIdx,planet:planetIdx,score,lives:baseHP,baseHP,starsCaught,target,combo,best,stars:stars.length,projs:projs.length,px:Math.round(P.x),py:Math.round(P.y),r:P.r,paused,progress}),
+  getState:()=>({mode,sel,diff:diffIdx,planet:planetIdx,score,lives:baseHP,baseHP,starsCaught,target,combo,best,stars:stars.length,projs:projs.length,px:Math.round(P.x),py:Math.round(P.y),r:P.r,paused,drag,progress}),
   select:i=>selectHero(i),
   diff:()=>showDiff(),
   start:(d,p)=>startLevel(d===undefined?diffIdx:d,p===undefined?planetIdx:p),

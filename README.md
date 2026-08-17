@@ -1,17 +1,26 @@
 # Star Catcher
 
-A tiny arcade game in a single HTML file. Pick a hero, then catch falling stars.
+A tiny arcade game in a single HTML file. Pick a hero, pick a planet, catch falling stars before they leak into your base.
 
 ## Heroes
-- **Tank** - wide reach, steady pace
-- **Bolt** - blistering speed
-- **Rock** - balanced and tough
+- **Tank** - huge frame, huge reach, slow
+- **Bolt** - blistering speed, small target
+- **Rock** - fires cone volleys of rocky projectiles every second that catch stars too
+
+## Difficulties & planets
+- 3 difficulties (Easy / Medium / Hard) x 3 planets each = 9 levels.
+- Planets unlock in order within a difficulty; progress is saved in your browser.
+- Each planet has a star target - catch that many stars to clear it.
+
+## Base health
+- Your base has 10 HP. Every star that slips past costs 1 HP.
+- The slim vertical bar on the right edge shows base health.
+- Hearts restore 1 HP. At 0 HP it's game over.
 
 ## How to play
-- Select a hero on the title screen (click, or press 1 / 2 / 3), then press Start.
+- Select a hero, hit Start, then pick an unlocked planet.
 - Move with WASD or arrow keys (drag on touch screens).
-- Catch falling stars for points. Chain catches to build a combo multiplier.
-- Gold stars are worth more, hearts restore a life. Miss 3 stars and it's game over.
+- Gold stars are worth 50x your combo, hearts restore HP, chains build a combo multiplier.
 - P pauses, M toggles sound. Best score is saved in your browser.
 
 ## Run locally

@@ -12,6 +12,13 @@ A tiny arcade game in a single HTML file. Pick a hero, pick a planet, catch fall
 - Planets unlock in order within a difficulty; progress is saved in your browser.
 - Each planet has a star target - catch that many stars to clear it.
 
+## Endless mode (adaptive)
+- **ENDLESS** card on the planet screen (or press **4**) - infinite waves, no target, survive as long as you can.
+- **DDA (Dynamic Difficulty Adjustment)**: the game reads how well you're doing. Catch streaks push the difficulty up (faster spawns, faster falls, more bombs), while leaks ease it back off with a short grace period. The **ADAPT** bar in the HUD shows the current difficulty (green = relaxed, yellow = normal, red = intense).
+- Difficulty also ramps with time and every **wave** (30s) warps you to a new planet.
+- **Upgrades**: catching stars / defusing bombs earns XP. Level up and pick 1 of 3 upgrades: GROWTH (+size), SPEED, ARMOR (+HP), RICH (+score), MULTI (+projectiles per volley - extra lightning for Bolt, extra rocks for Rock, bigger shockwave for Tank), RAPID (fire rate), MAGNET (pulls stars), LUCKY (more gold stars).
+- Separate endless best score is saved in your browser.
+
 ## Base health
 - Your base has 10 HP. Every star that slips past costs 1 HP.
 - The slim vertical bar on the right edge shows base health.

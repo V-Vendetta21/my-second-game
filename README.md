@@ -22,6 +22,7 @@ A tiny arcade game in a single HTML file. Pick a hero, pick a planet, catch fall
 - **Drag**: hold the hero icon and drag it across the sky to catch stars (also works with touch).
 - WASD or arrow keys work as an alternative.
 - Gold stars are worth 50x your combo, hearts restore HP, chains build a combo multiplier.
+- **Bombs** fall too (dark spheres with a lit fuse and red glow, ~8% of drops, slower than stars, beeping faster as they near your base). If one reaches the base it explodes for **3 HP damage** - catch it to defuse it safely.
 - P pauses, M toggles sound. Best score is saved in your browser.
 
 ## Run locally

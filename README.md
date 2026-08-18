@@ -2,6 +2,8 @@
 
 A tiny arcade game in a single HTML file. Pick a hero, pick a planet, catch falling stars before they leak into your base.
 
+A detailed animated title card (halftone patterns in hero colors, glowing hero orbs) plays for ~2 seconds on launch.
+
 ## Heroes
 - **Tank** - huge frame, crushes stars on contact with an expanding shockwave; heavy and slow to drag
 - **Bolt** - blistering speed, fires lightning bolts from its sides that catch stars

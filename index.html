@@ -226,7 +226,7 @@ function drawSky(){
 
 /* ================= audio ================= */
 let AC=null,muted=false;
-function ac(){if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC;}
+function ac(){if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();ensureMusic();return AC;}
 function tone(f,d,type,v,slide){if(muted)return;const c=ac(),o=c.createOscillator(),g=c.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,c.currentTime);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),c.currentTime+d);g.gain.setValueAtTime(v||.14,c.currentTime);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+d);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+d+.02);}
 
 /* ================= sample sfx ================= */
@@ -237,6 +237,7 @@ function loadSFX(){
   const load=(name,url)=>{fetch(url).then(r=>r.arrayBuffer()).then(b=>c.decodeAudioData(b).then(buf=>{SFX[name]=buf;})).catch(()=>{});};
   load('warp1','audio/star-warp.mp3');
   load('warp2','audio/bolt-warp.mp3');
+  load('music','audio/music.mp3');
 }
 function snd(name,rate,vol,delay){
   if(muted)return;
@@ -250,6 +251,114 @@ function snd(name,rate,vol,delay){
   g.gain.exponentialRampToValueAtTime(.0001,t0+Math.max(.1,buf.duration/Math.max(.1,rate||1)));
   src.connect(g);g.connect(c.destination);
   src.start(t0);
+}
+
+/* ================= music ================= */
+let musicOn=true,musicVol=.55,musicStarted=false,musicGain=null,musicSrc=null;
+function ensureMusic(){
+  if(!musicOn||musicStarted||!SFX.music||!AC)return;
+  musicStarted=true;
+  const c=AC;
+  if(c.state==='suspended')c.resume();
+  const src=c.createBufferSource();
+  src.buffer=SFX.music;
+  const dur=SFX.music.duration;
+  const loopFrom=dur>10.5?10:0;
+  src.loop=true;
+  src.loopStart=Math.min(loopFrom,Math.max(0,dur-1));
+  src.loopEnd=dur;
+  musicGain=c.createGain();
+  musicGain.gain.value=muted?0:musicVol;
+  src.connect(musicGain);musicGain.connect(c.destination);
+  src.start(0,Math.min(loopFrom,Math.max(0,dur-.5)));
+  musicSrc=src;
+}
+function toggleMusic(){
+  if(!AC)return;
+  if(musicOn){
+    if(!musicStarted)ensureMusic();
+    else if(musicGain)musicGain.gain.setTargetAtTime(muted?0:musicVol,AC.currentTime,.05);
+  }else{
+    if(musicGain)musicGain.gain.setTargetAtTime(0,AC.currentTime,.08);
+  }
+}
+
+/* ================= settings bar ================= */
+let settingsOpen=false,settingsDrag=null;
+const SET_R=16;
+function setGearRect(){return{x:W-30,y:80,r:SET_R};}
+function setPanelRect(){return{x:Math.max(8,W-242),y:104,w:212,h:148};}
+function setToggleRect(){const p=setPanelRect();return{x:p.x+p.w-56,y:p.y+44,w:44,h:22};}
+function setSliderRect(){const p=setPanelRect();return{x:p.x+p.w-126,y:p.y+84,w:112,h:22};}
+function setVolFromX(x){
+  const s=setSliderRect();
+  musicVol=Math.round(Math.max(0,Math.min(1,(x-s.x)/s.w))*100)/100;
+  if(musicGain)musicGain.gain.setTargetAtTime((muted||!musicOn)?0:musicVol,ac().currentTime,.05);
+  try{localStorage.setItem('starcatcher_music_vol',String(musicVol));}catch(e){}
+  snd('warp2',1.2,.15);
+}
+function handleSettingsClick(x,y){
+  const g=setGearRect();
+  const onGear=dist(x,y,g.x,g.y)<g.r+6;
+  if(!settingsOpen){
+    if(onGear){settingsOpen=true;snd('warp2',1.1,.2);return true;}
+    return false;
+  }
+  if(onGear){settingsOpen=false;snd('warp2',1.1,.2);return true;}
+  const t=setToggleRect();
+  if(hitBtn(t,x,y)){
+    musicOn=!musicOn;toggleMusic();
+    snd('warp2',1.3,.25);
+    try{localStorage.setItem('starcatcher_music_on',musicOn?'1':'0');}catch(e){}
+    return true;
+  }
+  const s=setSliderRect();
+  if(hitBtn(s,x,y)){setVolFromX(x);settingsDrag='vol';return true;}
+  if(!hitBtn(setPanelRect(),x,y))settingsOpen=false;
+  return true;
+}
+function drawSettingsUI(){
+  const g=setGearRect();
+  const hov=dist(mx,my,g.x,g.y)<g.r+6;
+  ctx.save();
+  if(hov){const gr=ctx.createRadialGradient(g.x,g.y,4,g.x,g.y,44);gr.addColorStop(0,'rgba(255,213,74,.22)');gr.addColorStop(1,'rgba(255,213,74,0)');ctx.fillStyle=gr;ctx.beginPath();ctx.arc(g.x,g.y,44,0,7);ctx.fill();}
+  ctx.fillStyle=settingsOpen?'rgba(255,213,74,.16)':'rgba(255,255,255,.06)';
+  ctx.beginPath();ctx.arc(g.x,g.y,g.r,0,7);ctx.fill();
+  ctx.strokeStyle=settingsOpen?'#ffd54a':(hov?'rgba(255,220,140,.7)':'rgba(255,255,255,.28)');ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle=settingsOpen?'#ffd54a':'#cfd8ee';
+  ctx.font="15px 'Segoe UI',system-ui,sans-serif";ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('⚙',g.x,g.y+1);
+  if(settingsOpen){
+    const p=setPanelRect();
+    rr(ctx,p.x,p.y,p.w,p.h,14);ctx.fillStyle='rgba(10,13,28,.93)';ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1.5;rr(ctx,p.x,p.y,p.w,p.h,14);ctx.stroke();
+    ctx.strokeStyle='rgba(255,213,74,.35)';ctx.lineWidth=1;rr(ctx,p.x+5,p.y+5,p.w-10,p.h-10,10);ctx.stroke();
+    ctx.fillStyle='#eaf2ff';ctx.font="800 13px 'Segoe UI',system-ui,sans-serif";ctx.letterSpacing='2px';
+    ctx.fillText('SETTINGS',p.x+p.w/2,p.y+20);ctx.letterSpacing='0px';
+    ctx.textAlign='left';
+    ctx.fillStyle='#aebcd8';ctx.font="700 13px 'Segoe UI',system-ui,sans-serif";
+    ctx.fillText('MUSIC',p.x+16,p.y+55);
+    const t=setToggleRect();
+    ctx.fillStyle=musicOn?'#ffd54a':'rgba(255,255,255,.12)';
+    rr(ctx,t.x,t.y,t.w,t.h,t.h/2);ctx.fill();
+    ctx.strokeStyle=musicOn?'rgba(255,255,255,.5)':'rgba(255,255,255,.2)';ctx.lineWidth=1;rr(ctx,t.x,t.y,t.w,t.h,t.h/2);ctx.stroke();
+    const knobX=musicOn?t.x+t.w-19:t.x+3;
+    ctx.fillStyle=musicOn?'#241502':'#9fb0d0';
+    ctx.beginPath();ctx.arc(knobX,t.y+t.h/2,8,0,7);ctx.fill();
+    ctx.fillStyle='#aebcd8';ctx.font="700 13px 'Segoe UI',system-ui,sans-serif";
+    ctx.fillText('VOLUME',p.x+16,p.y+107);
+    const s=setSliderRect();
+    ctx.fillStyle='rgba(255,255,255,.1)';rr(ctx,s.x,s.y+8,s.w,6,3);ctx.fill();
+    const fw=s.w*musicVol;
+    if(fw>1){ctx.fillStyle='#ffd54a';rr(ctx,s.x,s.y+8,fw,6,3);ctx.fill();}
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x+fw,s.y+11,7,0,7);ctx.fill();
+    ctx.strokeStyle='#241502';ctx.lineWidth=1;ctx.beginPath();ctx.arc(s.x+fw,s.y+11,7,0,7);ctx.stroke();
+    ctx.textAlign='right';
+    ctx.fillStyle='#8fa3c8';ctx.font="600 11px 'Segoe UI',system-ui,sans-serif";
+    ctx.fillText(Math.round(musicVol*100)+'%',s.x+s.w+30,s.y+11);
+    ctx.textAlign='left';
+  }
+  ctx.restore();
 }
 
 /* ================= fx ================= */
@@ -1269,6 +1378,7 @@ function draw(){
   else if(mode==='upgrade')drawUpgrade();
   else if(mode==='clear')drawEnd(true);
   else drawEnd(false);
+  drawSettingsUI();
   ctx.restore();
 }
 function frame(ts){
@@ -1284,6 +1394,7 @@ let last=performance.now();
 function clickAt(x,y){
   ac();
   if(splashT>0)return;
+  if(handleSettingsClick(x,y))return;
   if(mode==='menu'){
     for(let i=0;i<3;i++){if(dist(x,y,m.cxs[i],m.cy)<m.R*1.35){selectHero(i);return;}}
     if(hitBtn(m.btn,x,y)){
@@ -1313,6 +1424,7 @@ function clickAt(x,y){
 cv.addEventListener('mousemove',e=>{
   mx=e.clientX;my=e.clientY;
   if(drag){dragX=mx;dragY=my;}
+  if(settingsDrag==='vol')setVolFromX(mx);
   let ptr=false;
   if(mode==='menu'){
     for(let i=0;i<3;i++)if(dist(mx,my,m.cxs[i],m.cy)<m.R*1.6)ptr=true;
@@ -1322,13 +1434,15 @@ cv.addEventListener('mousemove',e=>{
     for(let c=0;c<3;c++)for(let i=0;i<3;i++){const o=orbRect(diffCards[c],i);if(i<=Math.min(3,progress[DIFFS[c].id])&&dist(mx,my,o.x,o.y)<o.r*1.5)ptr=true;}
   }else if(mode==='play'&&!paused&&!drag&&dist(mx,my,P.x,P.y)<P.r*1.6){ptr=true;}
   else if(mode==='over'||mode==='clear'){ptr=btns.some(b=>hitBtn(b,mx,my));}
+  const g=setGearRect();
+  if(dist(mx,my,g.x,g.y)<g.r+6||(settingsOpen&&(hitBtn(setToggleRect(),mx,my)||hitBtn(setSliderRect(),mx,my))))ptr=true;
   cv.style.cursor=drag?'grabbing':(ptr?(mode==='play'?'grab':'pointer'):'default');
 });
 cv.addEventListener('mousedown',e=>{
   if(mode==='play'&&!paused&&dist(e.clientX,e.clientY,P.x,P.y)<P.r*1.6){drag=true;dragX=e.clientX;dragY=e.clientY;}
   else clickAt(e.clientX,e.clientY);
 });
-addEventListener('mouseup',()=>{drag=false;});
+addEventListener('mouseup',()=>{drag=false;settingsDrag=null;});
 cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];mx=t.clientX;my=t.clientY;if(mode==='play'&&!paused){drag=true;dragX=t.clientX;dragY=t.clientY;}else clickAt(t.clientX,t.clientY);},{passive:false});
 cv.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];mx=t.clientX;my=t.clientY;if(drag){dragX=t.clientX;dragY=t.clientY;}},{passive:false});
 cv.addEventListener('touchend',e=>{e.preventDefault();drag=false;},{passive:false});
@@ -1337,7 +1451,7 @@ addEventListener('keydown',e=>{
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
   if(splashT>0)return;
   if(mode==='play'&&(e.key==='p'||e.key==='P'||e.key==='Escape')){paused=!paused;snd('warp2',.85,.2);return;}
-  if(mode==='play'&&(e.key==='m'||e.key==='M')){muted=!muted;return;}
+  if(mode==='play'&&(e.key==='m'||e.key==='M')){muted=!muted;if(musicGain)musicGain.gain.setTargetAtTime(muted?0:musicVol,ac().currentTime,.05);return;}
   if(mode==='menu'){
     if(e.key==='1')selectHero(0);
     else if(e.key==='2')selectHero(1);
@@ -1365,6 +1479,8 @@ addEventListener('resize',resize);
 resize();initSky();layout();
 loadSFX();
 let splashT=1.9;
+try{musicOn=localStorage.getItem('starcatcher_music_on')!=='0';}catch(e){}
+try{musicVol=parseFloat(localStorage.getItem('starcatcher_music_vol'))||.55;musicVol=Math.max(0,Math.min(1,musicVol));}catch(e){}
 window.SC={
   getState:()=>({mode,sel,diff:diffIdx,planet:planetIdx,score,lives:baseHP,baseHP,maxHP,starsCaught,target,combo,best,endBest,wave:inf?inf.wave:0,level:inf?inf.level:0,stress:inf?Math.round(inf.stress*100)/100:0,upgrades:inf?inf.upgrades:{},splash:Math.round(splashT*100)/100,stars:stars.length,projs:projs.length,px:Math.round(P.x),py:Math.round(P.y),r:P.r,paused,drag,progress}),
   select:i=>selectHero(i),
@@ -1372,6 +1488,7 @@ window.SC={
   endless:()=>startEndless(),
   upgrade:()=>levelUp(),
   skipSplash:()=>{splashT=0;},
+  setMusic:(on,v)=>{musicOn=!!on;if(v!==undefined){musicVol=Math.max(0,Math.min(1,v));}toggleMusic();},
   start:(d,p)=>startLevel(d===undefined?diffIdx:d,p===undefined?planetIdx:p),
   menu:()=>toMenu(),
   setBaseHP:n=>{baseHP=n;},

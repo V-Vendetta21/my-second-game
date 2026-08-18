@@ -37,6 +37,8 @@ A detailed animated title card (halftone patterns in hero colors, glowing hero o
 ## Audio
 - `audio/star-warp.mp3` (cartoonish warp #4) drives the **star spawning** sound and most gameplay SFX via pitch-shifting: catches pitch up with your combo, gold stars ring higher, bombs/leaks drop deep and slow, explosions layer both tracks pitched way down.
 - `audio/bolt-warp.mp3` (cartoonish warp #2) is **Bolt's lightning spawn**, and is re-pitched for defuses, level-ups, menu clicks and the endless-start fanfare.
+- `audio/music.mp3` (spacey cart #2) is the **background music** - loops seamlessly (from the 10s mark on longer tracks).
+- **Settings bar** (gear icon, top right): toggle music on/off and drag the volume slider. Settings are saved in your browser; M mutes everything.
 - Run via `python -m http.server` (samples load over HTTP).
 
 ## Run locally

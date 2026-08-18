@@ -834,8 +834,8 @@ function startEndless(){
   float(W/2,H*.5+38,'CATCH STARS  •  DODGE BOMBS  •  UPGRADE','#8fa3c8',2.8,15);
   snd('warp2',1.1,.4);snd('warp2',1.45,.32,.1);snd('warp2',1.8,.28,.2);
 }
-const UPGRADE_POOL=['grow','speed','hp','score','proj','rapid','magnet','luck','bombproof','regen','crit','combo','slowbomb'];
-const UPGRADE_CAPS={grow:3,speed:3,hp:4,score:5,proj:4,rapid:3,magnet:1,luck:3,bombproof:1,regen:2,crit:3,combo:3,slowbomb:2};
+const UPGRADE_POOL=['grow','speed','hp','score','proj','rapid','magnet','luck','bombproof','regen','crit','combo','slowbomb','projsize'];
+const UPGRADE_CAPS={grow:3,speed:3,hp:4,score:5,proj:4,rapid:3,magnet:1,luck:3,bombproof:1,regen:2,crit:3,combo:3,slowbomb:2,projsize:4};
 const UPGRADES={
   grow:{name:'GROWTH',icon:'+'},
   speed:{name:'SPEED',icon:'»'},
@@ -849,7 +849,8 @@ const UPGRADES={
   regen:{name:'REGEN',icon:'✚'},
   crit:{name:'CRIT',icon:'✪'},
   combo:{name:'COMBO+',icon:'❖'},
-  slowbomb:{name:'FREEZE',icon:'❄'}
+  slowbomb:{name:'FREEZE',icon:'❄'},
+  projsize:{name:'BIG SHOT',icon:'◉'}
 };
 function descFor(id){
   switch(id){
@@ -866,11 +867,12 @@ function descFor(id){
     case 'crit':return '20% double score';
     case 'combo':return 'combo lasts 50% longer';
     case 'slowbomb':return 'bombs fall 25% slower';
+    case 'projsize':return '+30% projectile size';
   }
   return '';
 }
 function buildUpgradeChoices(){
-  let pool=UPGRADE_POOL.filter(id=>!(HEROES[sel].id==='tank'&&id==='rapid'));
+  let pool=UPGRADE_POOL.filter(id=>!(HEROES[sel].id==='tank'&&(id==='rapid'||id==='projsize')));
   pool=pool.filter(id=>!UPGRADE_CAPS[id]||(inf.upgrades[id]||0)<UPGRADE_CAPS[id]);
   for(let i=pool.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[pool[i],pool[j]]=[pool[j],pool[i]];}
   upgChoices=(pool.length?pool:['hp']).slice(0,3).map(id=>({id,desc:descFor(id)}));
@@ -898,6 +900,7 @@ function applyUpgrade(id){
   else if(id==='crit'){float(fx,H*.42,'+CRIT CHANCE','#ffd54a',1,15);}
   else if(id==='combo'){float(fx,H*.42,'+COMBO TIME','#ff9d3d',1,15);}
   else if(id==='slowbomb'){float(fx,H*.42,'BOMBS SLOWER','#8fb8ff',1,15);}
+  else if(id==='projsize'){float(fx,H*.42,'+30% PROJ SIZE','#a97ce8',1,15);}
 }
 function levelUp(){
   mode='upgrade';upgHov=-1;
@@ -1049,7 +1052,7 @@ function updatePlay(dt){
     if(fireT<=0){
       const rapid=(inf&&inf.upgrades.rapid)||0;
       fireT=1.0*Math.pow(.85,rapid);
-      const pr=P.r*.25;
+      const pr=P.r*.25*(1+.3*((inf&&inf.upgrades.projsize)||0));
       const n=3+2*((inf&&inf.upgrades.proj)||0);
       const spread=.28+.1*((inf&&inf.upgrades.proj)||0);
       for(let k=0;k<n;k++){
@@ -1065,7 +1068,7 @@ function updatePlay(dt){
     if(fireT<=0){
       const rapid=(inf&&inf.upgrades.rapid)||0;
       fireT=.9*Math.pow(.85,rapid);
-      const pr=P.r*.22;
+      const pr=P.r*.22*(1+.3*((inf&&inf.upgrades.projsize)||0));
       const n=2+((inf&&inf.upgrades.proj)||0);
       for(let k=0;k<n;k++){
         const t=n>1?k/(n-1):0;

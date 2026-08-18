@@ -559,7 +559,7 @@ function startEndless(){
   score=0;baseHP=10;maxHP=10;scoreMult=1;starsCaught=0;combo=0;comboT=0;stars.length=0;projs.length=0;parts.length=0;floats.length=0;crushes.length=0;shocks.length=0;shakeT=0;
   target=Infinity;
   runT=0;spawnT=.8;flashT=0;missT=0;scorePop=0;newBest=false;fireT=.8;
-  inf={t:0,wave:1,stress:0,grace:0,level:1,xp:0,xpNeed:60,upgrades:{}};
+  inf={t:0,wave:1,stress:0,grace:0,level:1,xp:0,xpNeed:60,upgrades:{},regenT:0};
   const pr=HEROES[sel].radius;
   P={x:W/2,y:H-BASE_TOP-pr-10,r:pr,sp:HEROES[sel].speed,img:heroImg[sel]};
   btns=[];
@@ -567,8 +567,8 @@ function startEndless(){
   float(W/2,H*.5+38,'CATCH STARS  •  DODGE BOMBS  •  UPGRADE','#8fa3c8',2.8,15);
   tone(440,.12,'sine',.15);tone(660,.16,'sine',.13,.1);setTimeout(()=>tone(880,.2,'sine',.11,.1),160);
 }
-const UPGRADE_POOL=['grow','speed','hp','score','proj','rapid','magnet','luck'];
-const UPGRADE_CAPS={grow:3,speed:3,hp:4,score:5,proj:4,rapid:3,magnet:1,luck:3};
+const UPGRADE_POOL=['grow','speed','hp','score','proj','rapid','magnet','luck','bombproof','regen','crit','combo','slowbomb'];
+const UPGRADE_CAPS={grow:3,speed:3,hp:4,score:5,proj:4,rapid:3,magnet:1,luck:3,bombproof:1,regen:2,crit:3,combo:3,slowbomb:2};
 const UPGRADES={
   grow:{name:'GROWTH',icon:'+'},
   speed:{name:'SPEED',icon:'»'},
@@ -577,7 +577,12 @@ const UPGRADES={
   proj:{name:'MULTI',icon:'✚'},
   rapid:{name:'RAPID',icon:'⚡'},
   magnet:{name:'MAGNET',icon:'@'},
-  luck:{name:'LUCKY',icon:'★'}
+  luck:{name:'LUCKY',icon:'★'},
+  bombproof:{name:'BOMBPROOF',icon:'✧'},
+  regen:{name:'REGEN',icon:'✚'},
+  crit:{name:'CRIT',icon:'✪'},
+  combo:{name:'COMBO+',icon:'❖'},
+  slowbomb:{name:'FREEZE',icon:'❄'}
 };
 function descFor(id){
   switch(id){
@@ -589,11 +594,17 @@ function descFor(id){
     case 'rapid':return '+25% fire rate';
     case 'magnet':return 'pull stars from afar';
     case 'luck':return 'more gold stars';
+    case 'bombproof':return 'touch bombs = safe';
+    case 'regen':return 'heal 1 HP every 8s';
+    case 'crit':return '20% double score';
+    case 'combo':return 'combo lasts 50% longer';
+    case 'slowbomb':return 'bombs fall 25% slower';
   }
   return '';
 }
 function buildUpgradeChoices(){
-  const pool=UPGRADE_POOL.filter(id=>!UPGRADE_CAPS[id]||(inf.upgrades[id]||0)<UPGRADE_CAPS[id]);
+  let pool=UPGRADE_POOL.filter(id=>!(HEROES[sel].id==='tank'&&id==='rapid'));
+  pool=pool.filter(id=>!UPGRADE_CAPS[id]||(inf.upgrades[id]||0)<UPGRADE_CAPS[id]);
   for(let i=pool.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[pool[i],pool[j]]=[pool[j],pool[i]];}
   upgChoices=(pool.length?pool:['hp']).slice(0,3).map(id=>({id,desc:descFor(id)}));
 }
@@ -615,6 +626,11 @@ function applyUpgrade(id){
   else if(id==='rapid'){float(fx,H*.42,'+25% FIRE RATE','#ff9d3d',1,15);}
   else if(id==='magnet'){float(fx,H*.42,'MAGNET ON','#3dd9c4',1,15);}
   else if(id==='luck'){float(fx,H*.42,'+GOLD STARS','#ffd54a',1,15);}
+  else if(id==='bombproof'){float(fx,H*.42,'BOMBPROOF ON','#6fe08a',1,15);}
+  else if(id==='regen'){float(fx,H*.42,'REGEN ON','#7dd87d',1,15);}
+  else if(id==='crit'){float(fx,H*.42,'+CRIT CHANCE','#ffd54a',1,15);}
+  else if(id==='combo'){float(fx,H*.42,'+COMBO TIME','#ff9d3d',1,15);}
+  else if(id==='slowbomb'){float(fx,H*.42,'BOMBS SLOWER','#8fb8ff',1,15);}
 }
 function levelUp(){
   mode='upgrade';upgHov=-1;
@@ -643,16 +659,19 @@ function spawnStar(){
   else if(roll<goldCh+heartCh)type='heart';
   else if(roll<goldCh+heartCh+bombCh)type='bomb';
   const r=type==='gold'?24:type==='heart'?18:type==='bomb'?19:13+Math.random()*7;
-  const vy=effFall()*(.85+Math.random()*.5)*(type==='gold'?1.15:type==='bomb'?.68:1);
+  const vy=effFall()*(.85+Math.random()*.5)*(type==='gold'?1.15:type==='bomb'?Math.max(.25,.68*Math.pow(.75,(inf&&inf.upgrades.slowbomb)||0)):1);
   stars.push({x:r+20+Math.random()*(W-2*r-40),y:-30,r,vy,vx:type==='bomb'?(Math.random()-.5)*12:(Math.random()-.5)*30,rot:0,vr:type==='bomb'?0:(Math.random()-.5)*2.4,type,beepT:Math.random()*.4+.3});
 }
 function onCatch(s){
-  combo=Math.min(9,combo+1);comboT=2.5;scorePop=.25;
+  combo=Math.min(9,combo+1);comboT=2.5*(1+.5*((inf&&inf.upgrades.combo)||0));scorePop=.25;
   starsCaught++;
+  const critCh=(inf&&inf.upgrades.crit)?Math.min(.6,.2*inf.upgrades.crit):0;
+  const isCrit=critCh>0&&Math.random()<critCh;
   if(s.type==='gold'){
-    const pts=Math.round(50*combo*scoreMult);score+=pts;
-    float(s.x,s.y,'+'+pts,'#ffd54a');
-    burst(s.x,s.y,'#ffd54a',26);
+    let pts=Math.round(50*combo*scoreMult);if(isCrit)pts*=2;
+    score+=pts;
+    float(s.x,s.y,'+'+pts+(isCrit?' CRIT!':''),'#ffd54a');
+    burst(s.x,s.y,isCrit?'#fff3c8':'#ffd54a',isCrit?34:26);
     tone(660,.09,'triangle',.16);tone(880,.12,'triangle',.16,.05);tone(1320,.16,'triangle',.13,.05);
   }else if(s.type==='heart'){
     baseHP=Math.min(maxHP,baseHP+1);
@@ -660,13 +679,15 @@ function onCatch(s){
     burst(s.x,s.y,'#ff7d8a',20);
     tone(440,.12,'sine',.16);tone(660,.16,'sine',.13,.1);
   }else{
-    const pts=Math.round(10*combo*scoreMult);score+=pts;
-    float(s.x,s.y,'+'+pts,'#cfe0ff');
-    burst(s.x,s.y,'#aed0ff',12);
+    let pts=Math.round(10*combo*scoreMult);if(isCrit)pts*=2;
+    score+=pts;
+    float(s.x,s.y,'+'+pts+(isCrit?' CRIT!':''),isCrit?'#ffd54a':'#cfe0ff');
+    burst(s.x,s.y,isCrit?'#ffd54a':'#aed0ff',isCrit?20:12);
     tone(500+combo*45,.07,'triangle',.14);
   }
   if(diffIdx===3){
-    inf.xp+=s.type==='gold'?50:s.type==='heart'?5:10;
+    const xpMult=Math.min(5,1+(inf.level-1)*.6);
+    inf.xp+=Math.round((s.type==='gold'?50:s.type==='heart'?5:10)*xpMult);
     inf.stress=Math.min(1,inf.stress+.05);
     if(inf.xp>=inf.xpNeed)levelUp();
   }
@@ -707,7 +728,7 @@ function defuse(x,y){
   burst(x,y,'#9fb0c8',10);
   float(x,y-16,'DEFUSED','#aebcd8',.85,13);
   tone(500,.06,'square',.05);tone(700,.08,'square',.04);
-  if(diffIdx===3){inf.xp+=25;inf.stress=Math.min(1,inf.stress+.04);if(inf.xp>=inf.xpNeed)levelUp();}
+  if(diffIdx===3){const xpMult=Math.min(5,1+(inf.level-1)*.6);inf.xp+=Math.round(25*xpMult);inf.stress=Math.min(1,inf.stress+.04);if(inf.xp>=inf.xpNeed)levelUp();}
 }
 function updatePlay(dt){
   runT+=dt;
@@ -722,6 +743,13 @@ function updatePlay(dt){
       float(W/2,H*.3,'WAVE '+nw,'#ffd54a',1.6,30);
       float(W/2,H*.3+38,'NEW PLANET: '+PLANETS[planetIdx].name,PLANETS[planetIdx].col,1.6,18);
       tone(520,.1,'triangle',.14);setTimeout(()=>tone(780,.14,'triangle',.12,.1),120);
+    }
+    if(inf.upgrades.regen){
+      inf.regenT-=dt;
+      if(inf.regenT<=0){
+        inf.regenT=8/Math.max(1,inf.upgrades.regen);
+        if(baseHP<maxHP){baseHP++;float(P.x,P.y-P.r-20,'+1','#7dd87d',1,14);}
+      }
     }
   }
   if(scorePop>0)scorePop-=dt;
@@ -807,7 +835,10 @@ function updatePlay(dt){
     if(s.y>H-BASE_TOP+6){stars.splice(i,1);s.type==='bomb'?fizzle(s.x):onLeak(s.x);continue;}
     if(dist(P.x,P.y,s.x,s.y)<P.r+s.r*.7){
       stars.splice(i,1);
-      if(s.type==='bomb')onBombHit(s.x,s.y);
+      if(s.type==='bomb'){
+        if(inf&&inf.upgrades.bombproof)defuse(s.x,s.y);
+        else onBombHit(s.x,s.y);
+      }
       else{onCatch(s);if(HEROES[sel].id==='tank')crush(P.x,P.y,P.r*2.3*(1+.35*((inf&&inf.upgrades.proj)||0)));}
     }
   }

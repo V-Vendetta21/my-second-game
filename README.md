@@ -34,6 +34,11 @@ A detailed animated title card (halftone patterns in hero colors, glowing hero o
 - **Bombs** fall too (dark spheres with a lit fuse and red glow, ~8% of drops, slower than stars, beeping). They can't hurt your base if they slip past - but **touching one with your hero explodes it for 3 HP damage**, so dodge them. Projectiles and abilities (lightning, rocks, crush shockwave) still destroy them safely.
 - P pauses, M toggles sound. Best score is saved in your browser.
 
+## Audio
+- `audio/star-warp.mp3` (cartoonish warp #4) drives the **star spawning** sound and most gameplay SFX via pitch-shifting: catches pitch up with your combo, gold stars ring higher, bombs/leaks drop deep and slow, explosions layer both tracks pitched way down.
+- `audio/bolt-warp.mp3` (cartoonish warp #2) is **Bolt's lightning spawn**, and is re-pitched for defuses, level-ups, menu clicks and the endless-start fanfare.
+- Run via `python -m http.server` (samples load over HTTP).
+
 ## Run locally
 ```
 python -m http.server 8080

@@ -3,8 +3,8 @@
 A tiny arcade game in a single HTML file. Pick a hero, pick a planet, catch falling stars before they leak into your base.
 
 ## Heroes
-- **Tank** - huge frame, huge reach, slow
-- **Bolt** - blistering speed, small target
+- **Tank** - huge frame, crushes stars on contact with an expanding shockwave; heavy and slow to drag
+- **Bolt** - blistering speed, fires lightning bolts from its sides that catch stars
 - **Rock** - fires cone volleys of rocky projectiles every second that catch stars too
 
 ## Difficulties & planets

@@ -680,13 +680,17 @@ function onLeak(x){
   burst(x,H-BASE_TOP,'#ff5d6c',14);
   if(baseHP<=0)gameOver();
 }
-function onBombLeak(x){
+function onBombHit(x,y){
   baseHP-=3;combo=0;flashT=.42;missT=1.6;shakeT=.5;
   if(diffIdx===3){inf.stress=Math.max(-1,inf.stress-.7);inf.grace=4;}
-  explode(x,H-BASE_TOP-12,170);
-  float(x,H-BASE_TOP-34,'BOMB!','#ff5d6c',1.25,26);
+  explode(x,y,170);
+  float(x,y-30,'BOMB HIT!','#ff5d6c',1.25,26);
   tone(300,.3,'sawtooth',.16,-120);setTimeout(()=>tone(140,.5,'sawtooth',.14,-60),120);
   if(baseHP<=0)gameOver();
+}
+function fizzle(x){
+  burst(x,H-BASE_TOP-10,'#9fb0c8',8);
+  tone(420,.08,'square',.04,-120);
 }
 function explode(x,y,rad){
   shocks.push({x,y,t:0,max:.38,rad,col:'#ff8a3d'});
@@ -784,6 +788,7 @@ function updatePlay(dt){
   }
   if(diffIdx===3&&inf.upgrades.magnet){
     for(const s of stars){
+      if(s.type==='bomb')continue;
       const d2=dist(P.x,P.y,s.x,s.y);
       if(d2<170&&d2>1){
         const k=2.6*dt*(1-d2/170);
@@ -799,10 +804,10 @@ function updatePlay(dt){
       s.beepT=(s.beepT||.5)-dt;
       if(s.beepT<=0){s.beepT=Math.max(.14,.55-(H-BASE_TOP-s.y)/H*.45);tone(1150,.05,'square',.032);}
     }
-    if(s.y>H-BASE_TOP+6){stars.splice(i,1);s.type==='bomb'?onBombLeak(s.x):onLeak(s.x);continue;}
+    if(s.y>H-BASE_TOP+6){stars.splice(i,1);s.type==='bomb'?fizzle(s.x):onLeak(s.x);continue;}
     if(dist(P.x,P.y,s.x,s.y)<P.r+s.r*.7){
       stars.splice(i,1);
-      if(s.type==='bomb')defuse(s.x,s.y);
+      if(s.type==='bomb')onBombHit(s.x,s.y);
       else{onCatch(s);if(HEROES[sel].id==='tank')crush(P.x,P.y,P.r*2.3*(1+.35*((inf&&inf.upgrades.proj)||0)));}
     }
   }
